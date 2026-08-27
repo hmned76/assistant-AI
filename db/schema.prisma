@@ -1,0 +1,45 @@
+/// Prisma schema for the AI assistant project.
+/// Define your data models here.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int          @id @default(autoincrement())
+  username      String       @unique
+  passwordHash  String
+  languagePreference String? default("fr")
+  createdAt     DateTime     @default(now())
+  contacts      Contact[]    // contacts belonging to this user
+  events        Event[]      // events created by this user
+}
+
+model Contact {
+  id        Int   @id @default(autoincrement())
+  user      User? @relation(fields: [userId], references: [id])
+  userId    Int?
+  name      String
+  phone     String? // format international, can be null
+  relation  String? // frère, sœur, médecin, etc.
+  isPrivate Boolean @default(false)
+  events    Event[] // optional link if a rendez‑vous is tied to this contact
+}
+
+model Event {
+  id          Int        @id @default(autoincrement())
+  user        User?      @relation(fields: [userId], references: [id])
+  userId      Int?
+  title       String
+  startTime   DateTime
+  endTime     DateTime?
+  isPrivate   Boolean    @default(false)
+  contact     Contact?  @relation(fields: [contactId], references: [id])
+  contactId   Int?
+  notes       String?
+}
