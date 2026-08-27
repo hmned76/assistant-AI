@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversations Assistant IA – Hmied حميد</title>
+    <style>
+        body { font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:20px; }
+        .container { max-width:800px; margin:auto; }
+        h1 { color:#333; }
+        .conversation { border:1px solid #ddd; margin-top:20px; padding:15px; border-radius:8px; background:#fff; }
+        .user { font-weight:bold; color:#0066cc; }
+        .assistant { color:#333; margin-top:5px; }
+        .timestamp { font-size:0.8em; color:#888; margin-top:5px; }
+        .btn { display:inline-block; margin-top:10px; padding:8px 16px; background:#0066cc; color:#fff; text-decoration:none; border-radius:4px; }
+        .btn:hover { background:#0052a3; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Conversations Assistant IA – Hmied حميد</h1>
+
+    <h2>Historique</h2>
+    <div id="conversations">
+        {% if conversations %}
+            {% for c in conversations %}
+                <div class="conversation">
+                    <span class="user">{{ c.user }} :</span>
+                    <span class="assistant">{{ c.assistant }}</span>
+                    <span class="timestamp">{{ c.timestamp }}</span>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>Aucune conversation enregistrée.</p>
+        {% endif %}
+    </div>
+
+    <h2>Nouveau message</h2>
+    <input type="text" id="userInput" placeholder="Votre message..." style="width:70%; padding:5px;">
+    <a href="#" class="btn" onclick="sendMessage()">Envoyer</a>
+
+    <script>
+        function sendMessage() {
+            const input = document.getElementById('userInput');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+            fetch('/api/conversation', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ user: text, assistant: '…' }) // ici on pourrait appeler le vrai assistant
+            }).then(res => res.json())
+              .then(data => {
+                  // Rafraîchir la liste
+                  loadConversations();
+              });
+        }
+
+        function loadConversations() {
+            fetch('/api/conversations')
+                .then(r => r.json())
+                .then(data => {
+                    const container = document.getElementById('conversations');
+                    container.innerHTML = '';
+                    data.forEach(c => {
+                        const div = document.createElement('div');
+                        div.className = 'conversation';
+                        div.innerHTML = `<span class="user">${c.user} :</span> <span class="assistant">${c.assistant}</span> <span class="timestamp">${c.timestamp}</span>`;
+                        container.appendChild(div);
+                    });
+                });
+        }
+
+        // Charger au démarrage
+        loadConversations();
+    </script>
+</div>
+</body>
+</html>
