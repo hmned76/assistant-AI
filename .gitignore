@@ -16,3 +16,6 @@ start_ollama.ps1
 *.log
 .cache/
 .ollama/
+local.properties
+android/.gradle/
+android/app/build/
