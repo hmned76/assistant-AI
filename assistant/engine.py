@@ -108,6 +108,9 @@ def analyser(message: str) -> dict:
         return {"intention": "rdv", "contact": contact, "jour": jour, "heure": heure, "texte": message}
     if _contient(t, ["email", "mail", "ecris a", "اكتب"]):
         return {"intention": "email", "contact": contact, "jour": jour, "heure": heure, "texte": message}
+    if _contient(t, ["binance", "invest", "investir", "gagne", "profit", "bitcoin", "b tc",
+                     "btc", "crypto", "achete du", "vends ", "شراء", "استثمار", "cryptomonnaie"]):
+        return {"intention": "trading", "contact": None, "jour": jour, "heure": heure, "texte": message}
     if _contient(t, ["merci", "chokran", "شكرا"]):
         return {"intention": "merci", "contact": None, "jour": jour, "heure": heure, "texte": message}
     if _contient(t, ["au revoir", "by", "bye", "مع السلامة", "besslema"]):
@@ -153,6 +156,8 @@ def repondre(intention: dict, nom_assistant: str = "Hmied حميد", mode: str =
         if mode == "simu":
             return "Email prepare (simu). Configure SMTP dans config.py pour l'envoi."
         return "Email envoye."
+    if it == "trading":
+        return "J'ouvre mon analyse du marche des cryptos. Un instant..."
     if it == "merci":
         return "De rien ! N'hesite pas si tu as besoin d'autre chose."
     if it == "au_revoir":

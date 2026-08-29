@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 db/assistant.db
+db/portfolio.json
 server_out.txt
 server_err.txt
 dist/

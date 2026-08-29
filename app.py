@@ -13,6 +13,7 @@ from flask import Flask, render_template, request, jsonify
 import config
 from assistant import engine, storage
 from assistant.integrations import envoyer_whatsapp, envoyer_email
+from assistant import trading
 
 
 def _base_path() -> str:
@@ -35,7 +36,7 @@ def _traiter_demande(message: str):
     reponse = resultat["reponse"]
     infos = resultat["infos"]
 
-    # Actions externes selon l'intention (WhatsApp / email / rdv)
+    # Actions externes selon l'intention (WhatsApp / email / rdv / trading)
     actions = []
     if intention == "whatsapp":
         contact = infos.get("contact") or "le contact"
@@ -50,6 +51,13 @@ def _traiter_demande(message: str):
         debut = f"{infos.get('jour')}T{infos.get('heure') or '10:00'}:00"
         rid = storage.ajouter_evenement(titre, debut)
         actions.append({"type": "rdv", "resultat": {"id": rid, "debut": debut}})
+    elif intention == "trading":
+        try:
+            res = trading.executer_investissement(message)
+            reponse = res["reponse"]
+            actions.append({"type": "trading", "resultat": res})
+        except Exception as e:
+            reponse = f"L'analyse Binance a échoué : {e} (vérifie ta connexion internet)."
 
     # Persistance des deux cotes de la conversation
     storage.ajouter_conversation("user", message, intention)
@@ -92,6 +100,41 @@ def api_events():
 @app.route("/api/contacts")
 def api_contacts():
     return jsonify(storage.lister_contacts())
+
+
+@app.route("/api/prix")
+def api_prix():
+    symbole = request.args.get("symbol", config.BINANCE_COIN_DE_BASE)
+    try:
+        return jsonify({"symbole": symbole, "prix": trading.obtenir_prix(symbole)})
+    except Exception as e:
+        return jsonify({"erreur": str(e)}), 502
+
+
+@app.route("/api/analyse")
+def api_analyse():
+    symbole = request.args.get("symbol", config.BINANCE_COIN_DE_BASE)
+    try:
+        return jsonify(trading.analyser_marche(symbole))
+    except Exception as e:
+        return jsonify({"erreur": str(e)}), 502
+
+
+@app.route("/api/portfolio")
+def api_portfolio():
+    return jsonify(trading.valeur_portefeuille())
+
+
+@app.route("/api/trade", methods=["POST"])
+def api_trade():
+    data = request.get_json(silent=True) or {}
+    symbole = data.get("symbol") or config.BINANCE_COIN_DE_BASE
+    cote = (data.get("side") or "ACHAT").upper()
+    montant = float(data.get("amount") or (config.BINANCE_CAPITAL_INITIAL / 5))
+
+    if config.BINANCE_PAPER:
+        return jsonify(trading.trader_paper(symbole, cote, montant))
+    return jsonify(trading.ordre_reel(symbole, cote, montant))
 
 
 if __name__ == "__main__":
