@@ -147,11 +147,17 @@ def _envoyer_greenapi(destinataire: str, message: str) -> dict:
 
 
 def verifier_signature_webhook(payload: bytes, signature: str) -> bool:
-    """Verifie la signature du webhook entrant (HMAC-SHA256)."""
+    """Verifie la signature du webhook entrant (HMAC-SHA256).
+
+    Supporte le format Meta/WhatsApp Cloud ('sha256=<hex>') ainsi que le hex brut.
+    """
     secret = _get_webhook_secret()
     if not secret:
         return True
     expected = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+    # Meta envoie 'sha256=<hex>' ; on compare sans le prefixe si present
+    if signature.startswith("sha256="):
+        signature = signature[len("sha256="):]
     return hmac.compare_digest(expected, signature)
 
 
@@ -266,6 +272,8 @@ class WhatsAppMonitor:
             return self._poller_maytapi(since_timestamp)
         if provider == "360dialog":
             return self._poller_360dialog(since_timestamp)
+        if provider == "green-api":
+            return self._poller_greenapi(since_timestamp)
         return []
 
     def _poller_twilio(self, since_timestamp: int) -> list:

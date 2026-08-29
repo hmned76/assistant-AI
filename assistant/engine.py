@@ -79,15 +79,12 @@ LEXIQUE_TN = {
     "tfa99al": "essaye", "t9awwaj": "répète", "tksb": "écrit",
     "t9ul": "dit", "t9awl": "commence", "tkammel": "termine",
     "t9addem": "continue", "tjarreb": "rappelle", "t3allem": "enseigne",
-    "t9awan": "travaille", "t9aleb": "fait", "t9alebh": "fais-le",
+    "t9awan": "travaille",     "t9aleb": "fait", "t9alebh": "fais-le",
     "t9albih": "fais-le", "t9alebha": "fais-la", "t9alebhom": "fais-les",
     "t9alebki": "fais (tu)", "t9albi": "fais (je)", "t9albu": "fais (nous)",
     "t9albhum": "fais (ils)", "hwaya": "lui", "homuma": "eux",
-    "tfa99al": "essaye", "t9awwaj": "répète", "t9allam": "apprends",
-    "t9arraf": "sais", "t3arf": "connais", "t9adem": "reste",
-    "tjaw": "va", "tji": "viens", "t9adhab": "pars", "t9allal": "donne",
-    "t9awd": "rends", "t9achor": "cherche", "t9awan": "travaille",
-    "t3arf": "connais", "t9edem": "continue", "t9awwaj": "repete",
+    "tji": "viens", "t9adhab": "pars", "t9allal": "donne",
+    "t9awd": "rends", "t9achor": "cherche",
 }
 
 def _nettoyer_texte(t: str) -> str:
@@ -148,22 +145,23 @@ def _extraire_texte_message(text: str) -> str:
     return ""
 
 def analyser(message: str) -> dict:
-    """Analyse un message Tunisien et renvoie l'intention + infos."""
+    """Analyse un message Tunisien et renvoie l'intention + infos.
+
+    Ordre de priorite : les intentions d'ACTION (whatsapp, appel, rdv, email,
+    trading, rappel) sont verifiees AVANT les politesses (salutation/merci/
+    au-revoir) pour eviter qu'un message du type «whatsapp ... bonjour» ne soit
+    classe a tort comme une simple salutation.
+    """
     t = _nettoyer_texte(message)
     jour = _extraire_jour(t)
     heure = _extraire_heure(t)
     contact = _extraire_contact(t)
 
-    if _contient(t, ["saha", "bonjour", "salut", "sbah el khir", "hello", "بونجور",
-                     "صحه", "صباح الخير", "السلام", "اهلا", "مرحبا"]):
-        return {"intention": "salutation", "contact": None, "jour": jour, "heure": heure, "texte": message}
-    if _contient(t, ["planning", "programme", "agenda", "mon planning", "الجدول", "جدول", "برنامج", "plan du"]):
-        return {"intention": "planning", "contact": None, "jour": jour, "heure": heure, "texte": message}
-    if _contient(t, ["rappelle-moi", "rappel", "najm troufassni", "ذكرني", "فكرني", "ذكر", "rappelle le"]):
-        return {"intention": "rappel", "contact": contact, "jour": jour, "heure": heure, "texte": message}
     if _contient(t, ["whatsapp", "msg", "wa", "انبوب", "واتساب", "واتس", "ابعت"]):
         corps = _extraire_texte_message(t)
         return {"intention": "whatsapp", "contact": contact, "jour": jour, "heure": heure, "texte": corps or message}
+    if _contient(t, ["appelle", "appell", "telephone", "tel", "يطلب", "اتصل", "صل", "appeler"]):
+        return {"intention": "call", "contact": contact, "jour": jour, "heure": heure, "texte": message}
     if _contient(t, ["rdv", "rendez", "موعد", "لقاء", "حجز", "prends"]):
         return {"intention": "rdv", "contact": contact, "jour": jour, "heure": heure, "texte": message}
     if _contient(t, ["email", "mail", "ecris a", "اكتب", "ايميل"]):
@@ -173,12 +171,17 @@ def analyser(message: str) -> dict:
                      "بيتكوين", "سعر", "السعر", "ثمن", "تحليل", "صرف", "كريبتو", "عملة",
                      "cryptomonnaie"]):
         return {"intention": "trading", "contact": None, "jour": jour, "heure": heure, "texte": message}
+    if _contient(t, ["rappelle-moi", "rappel", "najm troufassni", "ذكرني", "فكرني", "ذكر", "rappelle le"]):
+        return {"intention": "rappel", "contact": contact, "jour": jour, "heure": heure, "texte": message}
+    if _contient(t, ["planning", "programme", "agenda", "mon planning", "الجدول", "جدول", "برنامج", "plan du"]):
+        return {"intention": "planning", "contact": None, "jour": jour, "heure": heure, "texte": message}
+    if _contient(t, ["saha", "bonjour", "salut", "sbah el khir", "hello", "بونجور",
+                     "صحه", "صباح الخير", "السلام", "اهلا", "مرحبا"]):
+        return {"intention": "salutation", "contact": None, "jour": jour, "heure": heure, "texte": message}
     if _contient(t, ["merci", "chokran", "شكرا"]):
         return {"intention": "merci", "contact": None, "jour": jour, "heure": heure, "texte": message}
     if _contient(t, ["au revoir", "by", "bye", "مع السلامة", "بسلامة", "besslema"]):
         return {"intention": "au_revoir", "contact": None, "jour": jour, "heure": heure, "texte": message}
-    if _contient(t, ["appelle", "appell", "telephone", "tel", "يطلب", "اتصل", "صل", "appeler"]):
-        return {"intention": "call", "contact": contact, "jour": jour, "heure": heure, "texte": message}
     return {"intention": "question", "contact": contact, "jour": jour, "heure": heure, "texte": message}
 
 
@@ -206,7 +209,8 @@ def repondre(intention: dict, nom_assistant: str = "Hmied حميد", mode: str =
         corps = texte if texte and len(texte) > 3 else "Message sans texte."
         if mode == "simu":
             return (f"OK ! Message WhatsApp envoye (simu) a {c} : « {corps} » "
-                    "(configure la cle Twilio dans config.py pour l'envoi reel).")
+                    "(configure un fournisseur dans config.py : Maytapi ou 360dialog, "
+                    "Twilio etant bloque en Tunisie).")
         return f"Message WhatsApp envoye a {c} : « {corps} »."
     if it == "rdv":
         c = contact if contact and contact != "Contact" else "le contact"

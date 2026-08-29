@@ -56,6 +56,12 @@ WA_MAYTAPI_INSTANCE_ID = ""
 WA_360DIALOG_API_KEY = ""
 WA_360DIALOG_INSTANCE_ID = ""
 
+# --- Green-api (gratuit 5000 msg/jour) ---
+# Inscription : https://green-api.com
+# Apres inscription, recupere l'ID d'instance et le token API dans le dashboard.
+GREEN_API_INSTANCE_ID = ""
+GREEN_API_API_KEY = ""
+
 # --- Twilio (NE FONCTIONNE PAS en Tunisie - trials bloques) ---
 # Si tu as un compte Twilio hors Tunisie, remplit ici :
 TWILIO_ACCOUNT_SID = ""

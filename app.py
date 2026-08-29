@@ -16,7 +16,7 @@ from flask import Flask, render_template, request, jsonify, Response
 
 import config
 from assistant import engine, storage, ia
-from assistant.integrations import envoyer_whatsapp, envoyer_email
+from assistant.integrations import envoyer_email
 from assistant.whatsapp_connector import envoyer_whatsapp as wa_envoyer, demarrer_whatsapp_monitor, arreter_whatsapp_monitor, traiter_message_whatsapp, verifier_signature_webhook
 from assistant import trading
 
@@ -70,11 +70,15 @@ def _traiter_demande(message: str):
     if intention == "whatsapp":
         contact = infos.get("contact") or "le contact"
         corps = infos.get("texte") or reponse
-        res = envoyer_whatsapp(config.TWILIO_TO_WHATSAPP or contact, corps)
+        # Resoudre le nom du contact vers un numero de telephone (config.CONTACTS)
+        cle_contact = contact.lower().split()[-1]
+        numero = config.CONTACTS.get(cle_contact, config.CONTACTS.get(contact.lower(), ""))
+        destinataire = numero or contact
+        res = wa_envoyer(destinataire, corps)
         actions.append({"type": "whatsapp", "resultat": res})
         if res.get("statut") == "simu":
             reponse = (f"(Simulation) Message WhatsApp prêt pour {contact} : « {corps} ». "
-                       "Ajoute ta clé Twilio dans config.py pour un vrai envoi.")
+                       "Configure un fournisseur dans config.py (Maytapi/360dialog) pour un vrai envoi.")
         elif res.get("statut") == "erreur":
             reponse = f"⚠️ WhatsApp réel a échoué : {res.get('details', 'erreur inconnue')}"
     elif intention == "email":
