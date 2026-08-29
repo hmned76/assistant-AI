@@ -87,6 +87,11 @@ def _traiter_demande(message: str):
             actions.append({"type": "trading", "resultat": res})
         except Exception as e:
             reponse = f"L'analyse Binance a échoué : {e} (vérifie ta connexion internet)."
+    elif intention == "call":
+        c = infos.get("contact") or "le contact"
+        numero = config.CONTACTS.get(c.lower().split()[-1], config.CONTACTS.get(c.lower(), ""))
+        actions.append({"type": "call", "resultat": {"numero": numero, "contact": c}})
+        reponse = f"Je vais appeler {c} des maintenant."
 
     # Persistance des deux cotes de la conversation
     storage.ajouter_conversation("user", message, intention)

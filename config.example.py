@@ -54,3 +54,10 @@ BINANCE_API_KEY = ""
 BINANCE_SECRET = ""
 BINANCE_COIN_DE_BASE = "BTCUSDT"
 BINANCE_CAPITAL_INITIAL = float(100)   # en USDT (fictionnel en mode paper)
+
+# --- Contacts (numeros de telephone pour les appels) ---
+# Ajoute tes contacts ici avec leur numero.
+CONTACTS = {
+    "frere": "+216XXXXXXXX",
+    "mohamed": "+216XXXXXXXX",
+}

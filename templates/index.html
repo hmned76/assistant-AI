@@ -45,7 +45,7 @@
     <div class="droite">
       <button id="voix" class="hb" title="Lire les réponses à voix haute">🔈</button>
       <button id="voixchoix" class="hb" title="Choisir la voix de Hmied">🎛️</button>
-      <div class="ver">v2.0</div>
+      <div class="ver">v2.1</div>
     </div>
   </header>
 
@@ -104,6 +104,13 @@
         ajouter('assistant', data.reponse || 'Erreur de réponse.', data.intention);
         if (lirre && window.AndroidIOS && typeof AndroidIOS.parler === 'function') {
           AndroidIOS.parler(data.reponse || '');
+        }
+        if (data.actions) {
+          data.actions.forEach(a => {
+            if (a.type === 'call' && window.AndroidIOS && typeof AndroidIOS.appeler === 'function') {
+              AndroidIOS.appeler(a.resultat.numero);
+            }
+          });
         }
       } catch (e) {
         const dernier = messages.lastElementChild;

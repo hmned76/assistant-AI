@@ -118,6 +118,8 @@ def analyser(message: str) -> dict:
         return {"intention": "merci", "contact": None, "jour": jour, "heure": heure, "texte": message}
     if _contient(t, ["au revoir", "by", "bye", "مع السلامة", "بسلامة", "besslema"]):
         return {"intention": "au_revoir", "contact": None, "jour": jour, "heure": heure, "texte": message}
+    if _contient(t, ["appelle", "appell", "telephone", "tel", "يطلب", "اتصل", "صل", "appeler"]):
+        return {"intention": "call", "contact": contact, "jour": jour, "heure": heure, "texte": message}
     return {"intention": "question", "contact": contact, "jour": jour, "heure": heure, "texte": message}
 
 
@@ -165,6 +167,9 @@ def repondre(intention: dict, nom_assistant: str = "Hmied حميد", mode: str =
         return "De rien ! N'hesite pas si tu as besoin d'autre chose."
     if it == "au_revoir":
         return "Besslema ! A bientot."
+    if it == "call":
+        c = contact if contact and contact != "Contact" else "le contact"
+        return f"Je vais appeler {c} des maintenant. 📞"
     return (f"J'ai compris ta demande. Aide-moi un peu : est-ce que tu veux un rendez-vous, "
             "un message WhatsApp, un rappel, ou un email ? (tu peux dire par exemple "
             "« prends rendez-vous avec mon frere demain a 10h »)")

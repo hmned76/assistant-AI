@@ -125,7 +125,7 @@ def _generer_ollama(message: str) -> str:
                 "model": _MODELE_OLLAMA,
                 "prompt": prompt,
                 "stream": False,
-                "options": {"temperature": 0.7, "num_ctx": 2048, "num_predict": 300},
+                "options": {"temperature": 0.3, "num_ctx": 2048, "num_predict": 300, "top_p": 0.95, "frequency_penalty": 0.3},
             },
             timeout=240,
         )
