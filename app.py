@@ -17,6 +17,7 @@ from flask import Flask, render_template, request, jsonify, Response
 import config
 from assistant import engine, storage, ia
 from assistant.integrations import envoyer_whatsapp, envoyer_email
+from assistant.whatsapp_connector import envoyer_whatsapp as wa_envoyer, demarrer_whatsapp_monitor, arreter_whatsapp_monitor, traiter_message_whatsapp, verifier_signature_webhook
 from assistant import trading
 
 
@@ -43,6 +44,10 @@ storage.DB_PATH = os.path.join(_base_path(), "db", "assistant.db")
 storage.initialiser()
 ia.configurer()
 print("Cerveau IA:", ia.source())
+
+# Demarrer le monitor WhatsApp en arriere-plan
+demarrer_whatsapp_monitor()
+print("WhatsApp monitor lance")
 
 
 def _traiter_demande(message: str):
@@ -213,6 +218,73 @@ def api_trade():
     if config.BINANCE_PAPER:
         return jsonify(trading.trader_paper(symbole, cote, montant))
     return jsonify(trading.ordre_reel(symbole, cote, montant))
+
+
+@app.route("/api/whatsapp/webhook", methods=["GET"])
+def wa_webhook_verify():
+    """Verification du webhook (GET pour l'inscription chez le fournisseur)."""
+    mode = request.args.get("mode")
+    token = request.args.get("hub.verify_token")
+    challenge = request.args.get("hub.challenge")
+    secret = config.WA_WEBHOOK_SECRET
+    if mode == "subscribe" and token == secret:
+        return challenge, 200
+    return "Forbidden", 403
+
+
+@app.route("/api/whatsapp/webhook", methods=["POST"])
+def wa_webhook_incoming():
+    """Reception d'un message WhatsApp entrant via webhook."""
+    data = request.get_json(silent=True) or {}
+    if not data:
+        return jsonify({"erreur": "donnees vides"}), 400
+
+    # Verification de la signature si configure
+    signature = request.headers.get("X-Signature", "")
+    if signature and config.WA_WEBHOOK_SECRET:
+        payload = request.get_data()
+        if not verifier_signature_webhook(payload, signature):
+            return jsonify({"erreur": "signature invalide"}), 403
+
+    try:
+        resultat = traiter_message_whatsapp(data)
+        return jsonify(resultat)
+    except Exception as e:
+        print("WA webhook erreur:", e)
+        return jsonify({"erreur": str(e)}), 500
+
+
+@app.route("/api/whatsapp/monitor/start", methods=["POST"])
+def wa_monitor_start():
+    """Demarre le polling des messages WhatsApp en arriere-plan."""
+    demarrer_whatsapp_monitor()
+    return jsonify({"statut": "ok", "message": "WhatsApp monitor demarre"})
+
+
+@app.route("/api/whatsapp/monitor/stop", methods=["POST"])
+def wa_monitor_stop():
+    """Arrete le polling des messages WhatsApp."""
+    arreter_whatsapp_monitor()
+    return jsonify({"statut": "ok", "message": "WhatsApp monitor arrette"})
+
+
+@app.route("/api/whatsapp/monitor/statut", methods=["GET"])
+def wa_monitor_statut():
+    """Statut du monitor WhatsApp."""
+    from assistant.whatsapp_connector import _wa_monitor
+    return jsonify({"actif": _wa_monitor.actif})
+
+
+@app.route("/api/whatsapp/envoyer", methods=["POST"])
+def wa_envoyer_manual():
+    """Envoi manuel d'un message WhatsApp."""
+    data = request.get_json(silent=True) or {}
+    dest = data.get("destinataire", "")
+    message = data.get("message", "")
+    if not dest or not message:
+        return jsonify({"erreur": "destinataire et message requis"}), 400
+    res = wa_envoyer(dest, message)
+    return jsonify(res)
 
 
 if __name__ == "__main__":
