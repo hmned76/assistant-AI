@@ -1,81 +1,96 @@
-# Assistant IA – Structure de dépôt `hmned76`
+# AssistantAI 🇹🇳🤖
 
-Ce dépôt contient les fichiers nécessaires à la création d'un assistant IA capable de comprendre le Tunisien (mélange français‑arabe) et d'exécuter des actions (prise de rendez‑vous, envoi WhatsApp, etc.).
+**Assistant personnel intelligent** qui comprend le **Tunisien** (mélange français‑arabe), prend des
+rendez‑vous, envoie des messages WhatsApp, programme des rappels, et garde l'historique de
+toutes les conversations.
 
-## Arborescence
+## Fonctionnalités (état actuel)
 
-```
-hmned76/
-├─ prompts/                     # Prompts système et modèles de tâches
-│   ├─ tunisian_system.md       # Règles d'écoute et d'interprétation en Tunisian
-│   └─ general_tasks.md         # Modèles (RDV, WhatsApp, rappel, planning)
-├─ transform/                   # Petits scripts de parsing / transformation
-│   └─ whatsapp_prompt.py       # Extraction de nom, message, date depuis une phrase Tunisian
-├─ db/                          # Schémas et migrations de la base de données
-│   └─ migrations/              # Fichiers de migration SQL (ex: 20260827_initial.sql)
-├─ .github/                     # Workflows CI/CD (optionnel)
-└─ README.md                    # Ce fichier
-```
+- ✅ **Compréhension du Tunisien** : pars le message tel quel, détecte l'intention
+  (salutation, RDV, WhatsApp, rappel, planning, email, remerciements, au revoir).
+- ✅ **Serveur web local** (Flask) sur `http://127.0.0.1:5000`, accessible depuis le
+  **téléphone** sur le même Wi‑Fi (`http://<IP‑du‑PC>:5000`).
+- ✅ **Interface de chat mobile‑first** (bulles, entrée Tunisien, badges d'intention).
+- ✅ **Persistance SQLite** : conversations, contacts, rendez‑vous, rappels.
+- ✅ **Mode `simu` par défaut** : aucune clé API requise ; les WhatsApp/emails sont
+  journalisés au lieu d'être envoyés.
+- 🔜 **Mode `reel`** : remplis `config.py` (Twilio, SMTP, Google Calendar) pour de vrais envois.
 
-## 1. Prompts
+## Démarrage rapide
 
-- **`prompts/tunisian_system.md`** : À préfixer à chaque demande utilisateur. Il dit à l'IA d'écouter le Tunisian tel quel, de reconnaître l'intention sans traduction mot‑à‑mot, et de répondre en français (avec le droit d'utiliser des mots tunisiens).
-- **`prompts/general_tasks.md`** : Contient des modèles décrivant les actions courantes (prendre RDV, envoyer WhatsApp, programmer un rappel, afficher le planning). Ces modèles peuvent être utilisés par le backend pour construire les requêtes vers la base de données ou les APIs tierces.
+```powershell
+# 1. Installer les dépendances
+python -m pip install -r requirements.txt
 
-## 2. Script de transformation
+# 2. Lancer le serveur
+python app.py
+# ou double‑clic sur start.bat
 
-- **`transform/whatsapp_prompt.py`** : Fonction `extract_intent(text)` qui, à partir d'une phrase en Tunisian, retourne un dictionnaire simplifié :
-  - `contact_name` : dernier mot considéré comme le nom de la personne.
-  - `action` : "whatsapp" si des mots déclencheurs sont détectés, sinon "none".
-  - `message` : texte après le mot "à" (ex. "demain à 10h").
-  - `date_heur` : motif de date/heure optionnel.
-
-  *Note* : C'est un parser très naïf ; en production, on utiliserait un modèle NLP ou des expressions régulières plus robustes.
-
-## 3. Base de données
-
-- **`db/migrations/`** : Contiendra les fichiers de migration SQL (ou dossiers Prisma/TypeORM) pour créer les tables suivantes (voir schema.prisma ci‑dessous).
-- **Tables suggérées** :
-  - `users` – identifiant, mot de passe (hash), préférences linguistiques.
-  - `contacts` – `id`, `user_id`, `name`, `phone`, `relation` (frère, sœur, médecin, etc.), `is_private`.
-  - `events` (rendez‑vous) – `id`, `user_id`, `title`, `start_datetime`, `end_datetime`, `is_private`, `contact_id` (lien vers `contacts`).
-  - `notifications` – `id`, `user_id`, `event_id`, `scheduled_at`, `sent`.
-
-Un exemple de **schema Prisma** peut être généré ou ajouté dans `db/schema.prisma` si vous utilisez Prisma.
-
-## 4. Utilisation typique
-
-1. Utilisateur envoie un message en Tunisian (ex: `"prends rendez‑vous avec mon frère Mohamed demain à 10h"`).
-2. Le backend reçoit le message et l'envoie au modèle LLM **après avoir préfixé** le prompt `tunisian_system.md`.
-3. Le LLM produit une réponse structurée (ou le backend appelle `extract_intent` via le script Python).
-4. Le backend recherche le contact dans la table `contacts` (via le nom extrait).
-5. Selon l'action :
-   - **RDV** : créer un événement dans la table `events`, puis envoyer un WhatsApp via Twilio.
-   - **Message** : envoyer directement un WhatsApp avec le texte extrait.
-   - **Rappel** : planifier une notification (Cron, FCM, etc.).
-6. L'IA répond à l'utilisateur en confirmant l'action (en français, avec le droit d'insérer des mots tunisiens si l'utilisateur les a employés).
-
-## 5. Développement local
-
-```bash
-# Cloner ou copier le dossier hmned76 dans votre projet
-git clone <votre-repo> hmned76
-cd hmned76
-
-# Installer les dépendances (exemple Python)
-pip install pytwilio  # ou les libs que vous utilisez
-
-# Lancer le script de test
-python transform/whatsapp_prompt.py
+# 3. Ouvrir le navigateur
+http://127.0.0.1:5000
 ```
 
-## 6. prochain steps (au choix)
+Depuis ton téléphone (même Wi‑Fi) : `http://192.168.100.29:5000` (IP du PC, affichée au démarrage).
 
-- Ajouter un fichier `db/schema.prisma` ou les migrations SQL manquantes.
-- Intégrer le script `extract_intent` dans votre backend (Node/Express, FastAPI, etc.).
-- Configurer les clés API Twilio / SendGrid / Google Calendar.
-- Tester le flow complet avec quelques phrases Tunisian réelles.
+## Compiler en .exe
 
----
+```powershell
+# double‑clic sur build_exe.bat  (ou lancer ci‑dessous)
+python -m PyInstaller --onefile --windowed --name AssistantAI --add-data "templates;templates" app.py
+```
 
-*Ce dépôt est un point de départ. Vous pouvez le personnaliser selon vos besoins (base de données, choix de LLM, déploiement).*
+Résultat : `dist\AssistantAI.exe`
+
+## Structure
+
+```
+assistant-AI/
+├─ app.py                    # Serveur Flask (chat + API + page)
+├─ config.py                 # Clés API (Twilio, SMTP, Google) — MODE simu/reel
+├─ requirements.txt          # Dépendances Python
+├─ start.bat                 # Lance le serveur (Windows)
+├─ build_exe.bat             # Compile l'executable (Windows)
+├─ templates/
+│   └─ index.html            # Interface de chat (mobile-first)
+├─ assistant/
+│   ├─ engine.py             # Moteur IA : analyse Tunisien + reponses
+│   ├─ storage.py            # Persistance SQLite
+│   ├─ integrations.py       # WhatsApp (Twilio) + Email (SMTP), simu/reel
+│   └─ __init__.py
+├─ prompts/
+│   ├─ tunisian_system.md    # Regles d'ecoute du Tunisian (pour un futur LLM)
+│   └─ general_tasks.md      # Modeles de tâches
+├─ transform/
+│   └─ whatsapp_prompt.py    # Extraction d'intention (legacy / reference)
+├─ db/
+│   ├─ assistant.db          # Base locale (creee au premier lancement)
+│   └─ migrations/           # Schema SQL de reference (Postgres)
+└─ README.md
+```
+
+## API
+
+| Endpoint | Méthode | Description |
+|----------|---------|-------------|
+| `/` | GET | Page de chat |
+| `/api/chat` | POST | `{"message": "..."}` → réponse + intention + actions |
+| `/api/conversations` | GET | Historique des conversations |
+| `/api/events` | GET | Rendez‑vous enregistrés |
+| `/api/contacts` | GET | Contacts |
+
+## Exemples Tunisien
+
+| Tu dis | AssistantAI fait |
+|--------|------------------|
+| « prends rendez‑vous avec mon frère Mohamed demain à 10h » | Note le RDV (event) + invite (si mode réel) |
+| « whatsapp mon frère dis‑lui qu'on se voit demain » | Envoie le message WhatsApp (si mode réel) |
+| « rappelle‑moi le médecin à 16h » | Programme le rappel |
+| « montre mon planning » | Affiche le résumé du jour/mois |
+
+## Étapes suivantes possibles
+
+1. Remplir `config.py` avec tes clés **Twilio** (WhatsApp), **SMTP/SendGrid** (email),
+   **Google Calendar** → passer `MODE = "reel"`.
+2. Brancher un vrai **LLM** (OpenAI / Claude) dans `assistant/engine.py` pour un dialogue libre.
+3. Générer l'**APK Android** (le dossier `android/` est prévu pour les autorisations).
+4. Ajouter la **vérification par PIN / chiffrement** pour la vue privée du planning.
