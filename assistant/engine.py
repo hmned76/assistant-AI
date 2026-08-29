@@ -69,11 +69,11 @@ def _extraire_heure(text: str) -> str:
 
 def _extraire_jour(text: str) -> str:
     t = text.lower()
-    if "demain" in t:
+    if "demain" in t or "غدوة" in t or "غدا" in t:
         return (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
     if "apres-demain" in t or "بعد غد" in t:
         return (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%d")
-    if "aujourd" in t or "lyoum" in t:
+    if "aujourd" in t or "lyoum" in t or "اليوم" in t:
         return datetime.now().strftime("%Y-%m-%d")
     m = re.search(r"\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b", text)
     if m:
@@ -95,25 +95,28 @@ def analyser(message: str) -> dict:
     heure = _extraire_heure(t)
     contact = _extraire_contact(t)
 
-    if _contient(t, ["saha", "bonjour", "salut", "sbah el khir", "hello", "بونجور"]):
+    if _contient(t, ["saha", "bonjour", "salut", "sbah el khir", "hello", "بونجور",
+                     "صحه", "صباح الخير", "السلام", "اهلا", "مرحبا"]):
         return {"intention": "salutation", "contact": None, "jour": jour, "heure": heure, "texte": message}
-    if _contient(t, ["planning", "programme", "agenda", "mon planning", "الجدول", "plan du"]):
+    if _contient(t, ["planning", "programme", "agenda", "mon planning", "الجدول", "جدول", "برنامج", "plan du"]):
         return {"intention": "planning", "contact": None, "jour": jour, "heure": heure, "texte": message}
-    if _contient(t, ["rappelle-moi", "rappel", "najm troufassni", "ذكرني", "rappelle le"]):
+    if _contient(t, ["rappelle-moi", "rappel", "najm troufassni", "ذكرني", "فكرني", "ذكر", "rappelle le"]):
         return {"intention": "rappel", "contact": contact, "jour": jour, "heure": heure, "texte": message}
-    if _contient(t, ["whatsapp", "msg", "wa", "انبوب"]):
+    if _contient(t, ["whatsapp", "msg", "wa", "انبوب", "واتساب", "واتس", "ابعت"]):
         corps = _extraire_texte_message(t)
         return {"intention": "whatsapp", "contact": contact, "jour": jour, "heure": heure, "texte": corps or message}
-    if _contient(t, ["rdv", "rendez", "موعد", "prends"]):
+    if _contient(t, ["rdv", "rendez", "موعد", "لقاء", "حجز", "prends"]):
         return {"intention": "rdv", "contact": contact, "jour": jour, "heure": heure, "texte": message}
-    if _contient(t, ["email", "mail", "ecris a", "اكتب"]):
+    if _contient(t, ["email", "mail", "ecris a", "اكتب", "ايميل"]):
         return {"intention": "email", "contact": contact, "jour": jour, "heure": heure, "texte": message}
     if _contient(t, ["binance", "invest", "investir", "gagne", "profit", "bitcoin", "b tc",
-                     "btc", "crypto", "achete du", "vends ", "شراء", "استثمار", "cryptomonnaie"]):
+                     "btc", "crypto", "achete du", "vends ", "شراء", "اشتري", "اشتر", "بيع", "استثمار",
+                     "بيتكوين", "سعر", "السعر", "ثمن", "تحليل", "صرف", "كريبتو", "عملة",
+                     "cryptomonnaie"]):
         return {"intention": "trading", "contact": None, "jour": jour, "heure": heure, "texte": message}
     if _contient(t, ["merci", "chokran", "شكرا"]):
         return {"intention": "merci", "contact": None, "jour": jour, "heure": heure, "texte": message}
-    if _contient(t, ["au revoir", "by", "bye", "مع السلامة", "besslema"]):
+    if _contient(t, ["au revoir", "by", "bye", "مع السلامة", "بسلامة", "besslema"]):
         return {"intention": "au_revoir", "contact": None, "jour": jour, "heure": heure, "texte": message}
     return {"intention": "question", "contact": contact, "jour": jour, "heure": heure, "texte": message}
 
@@ -127,7 +130,7 @@ def repondre(intention: dict, nom_assistant: str = "Hmied حميد", mode: str =
     texte = intention["texte"]
 
     if it == "salutation":
-        return "Saha ! Ana AssistantAI, relation. Qouli a3malt chkoun khair aujourd'hui ?"
+        return f"Saha ! Ana {nom_assistant}, relation. Qouli a3malt chkoun khair aujourd'hui ?"
     if it == "planning":
         return (f"Voici ton planning du {jour} : pour l'instant rien de prevu. "
                 "Tu veux que je note un rendez-vous ?")

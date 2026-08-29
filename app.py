@@ -8,10 +8,14 @@ Ouvrez ensuite http://127.0.0.1:5000 (ou l'IP de votre PC depuis le telephone).
 import os
 import sys
 
-from flask import Flask, render_template, request, jsonify
+os.environ.setdefault("HF_HOME", r"D:\assistantAI\.cache\huggingface")
+os.environ.setdefault("HUGGINGFACE_HUB_CACHE", r"D:\assistantAI\.cache\huggingface")
+os.environ.setdefault("OLLAMA_MODELS", r"D:\assistantAI\.ollama")
+
+from flask import Flask, render_template, request, jsonify, Response
 
 import config
-from assistant import engine, storage
+from assistant import engine, storage, ia
 from assistant.integrations import envoyer_whatsapp, envoyer_email
 from assistant import trading
 
@@ -24,10 +28,21 @@ def _base_path() -> str:
 
 
 app = Flask(__name__, template_folder=os.path.join(_base_path(), "templates"))
+app.config.update(TEMPLATES_AUTO_RELOAD=True, SEND_FILE_MAX_AGE_DEFAULT=0)
+
+
+@app.after_request
+def _no_cache(resp):
+    """Forcer le rechargement de l'interface (WebView du téléphone)."""
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    return resp
 
 # On pointe la base de donnees dans le dossier d'execution
 storage.DB_PATH = os.path.join(_base_path(), "db", "assistant.db")
 storage.initialiser()
+ia.configurer()
+print("Cerveau IA:", ia.source())
 
 
 def _traiter_demande(message: str):
@@ -36,6 +51,15 @@ def _traiter_demande(message: str):
     reponse = resultat["reponse"]
     infos = resultat["infos"]
 
+    # Cerveau local (Ollama) pour les questions libres
+    if intention == "question" and ia.est_actif():
+        try:
+            llm = ia.generer(message)
+            if llm:
+                reponse = llm
+        except Exception as e:
+            print("Ollama erreur:", e)
+
     # Actions externes selon l'intention (WhatsApp / email / rdv / trading)
     actions = []
     if intention == "whatsapp":
@@ -43,6 +67,11 @@ def _traiter_demande(message: str):
         corps = infos.get("texte") or reponse
         res = envoyer_whatsapp(config.TWILIO_TO_WHATSAPP or contact, corps)
         actions.append({"type": "whatsapp", "resultat": res})
+        if res.get("statut") == "simu":
+            reponse = (f"(Simulation) Message WhatsApp prêt pour {contact} : « {corps} ». "
+                       "Ajoute ta clé Twilio dans config.py pour un vrai envoi.")
+        elif res.get("statut") == "erreur":
+            reponse = f"⚠️ WhatsApp réel a échoué : {res.get('details', 'erreur inconnue')}"
     elif intention == "email":
         res = envoyer_email("Message d'AssistantAI", infos.get("texte") or reponse)
         actions.append({"type": "email", "resultat": res})
@@ -85,6 +114,50 @@ def api_chat():
         return jsonify({"erreur": "message vide"}), 400
     resultat = _traiter_demande(message)
     return jsonify(resultat)
+
+
+@app.route("/api/stt", methods=["POST"])
+def api_stt():
+    """Reconnait la parole (francais ou arabe tunisien) a partir du fichier audio envoye par l'APK."""
+    audio = request.get_data(cache=False)
+    if not audio or len(audio) < 500:
+        return jsonify({"texte": ""}), 400
+    try:
+        from assistant import stt
+        texte = stt.transcrire(audio)
+        return jsonify({"texte": texte})
+    except Exception as e:
+        return jsonify({"erreur": str(e)}), 500
+
+
+@app.route("/api/tts", methods=["POST"])
+def api_tts():
+    """Synthetise la reponse en MP3 avec une voix Microsoft naturelle (homme fr/ar)."""
+    data = request.get_json(silent=True) or {}
+    texte = (data.get("texte") or "").strip()
+    if not texte:
+        return jsonify({"erreur": "texte vide"}), 400
+    import re
+    if re.search(r"[\u0600-\u06FF]", texte):
+        voix = "ar-SA-HamedNeural"
+    else:
+        voix = "fr-FR-HenriNeural"
+    try:
+        import asyncio
+        import edge_tts
+
+        async def _synthetiser():
+            buffer = bytearray()
+            async for c in edge_tts.Communicate(texte, voix).stream():
+                if c["type"] == "audio":
+                    buffer.extend(c["data"])
+            return bytes(buffer)
+
+        chunks = asyncio.run(_synthetiser())
+        return Response(chunks, mimetype="audio/mpeg",
+                        headers={"Cache-Control": "no-store"})
+    except Exception as e:
+        return jsonify({"erreur": str(e)}), 500
 
 
 @app.route("/api/conversations")

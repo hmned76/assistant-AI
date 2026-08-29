@@ -6,30 +6,46 @@
   <title>AssistantAI – {{ nom_assistant }}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; background:#0f172a; height:100vh; display:flex; flex-direction:column; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background:#0f172a; height:100dvh; display:flex; flex-direction:column; -webkit-text-size-adjust:100%; }
     header { background:#1e293b; color:#e2e8f0; padding:12px 16px; display:flex; align-items:center; gap:10px; box-shadow:0 2px 8px rgba(0,0,0,.3); }
-    header .avatar { width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#38bdf8,#818cf8); display:flex; align-items:center; justify-content:center; font-weight:700; color:#fff; }
-    header h1 { font-size:16px; }
+    header .avatar { width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#38bdf8,#818cf8); display:flex; align-items:center; justify-content:center; font-weight:700; color:#fff; flex:0 0 auto; }
+    header .titre { min-width:0; flex:1; }
+    header h1 { font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     header span { font-size:12px; color:#94a3b8; }
-    #messages { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px; }
+    header .droite { display:flex; align-items:center; gap:6px; flex:0 0 auto; }
+    header .hb { border:none; border-radius:50%; background:#0f172a; color:#38bdf8; font-size:16px; width:34px; height:34px; cursor:pointer; flex:0 0 auto; }
+    header .hb.actif { color:#f59e0b; }
+    header .ver { font-size:10px; color:#38bdf8; background:#0f172a; border:1px solid #334155; border-radius:10px; padding:2px 8px; font-weight:700; }
+    #messages { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px; -webkit-overflow-scrolling:touch; }
     .msg { max-width:78%; padding:10px 14px; border-radius:14px; font-size:15px; line-height:1.45; word-wrap:break-word; }
     .user { align-self:flex-end; background:#2563eb; color:#fff; border-bottom-right-radius:4px; }
     .assistant { align-self:flex-start; background:#334155; color:#e2e8f0; border-bottom-left-radius:4px; }
     .msg .badge { display:inline-block; font-size:11px; background:rgba(255,255,255,.15); border-radius:8px; padding:1px 8px; margin-left:6px; }
     .info { text-align:center; color:#64748b; font-size:12px; margin:6px 0; }
-    #barre { display:flex; gap:8px; padding:12px 16px; background:#1e293b; }
-    #saisie { flex:1; padding:12px 14px; border:none; border-radius:24px; background:#0f172a; color:#e2e8f0; font-size:15px; outline:none; }
-    #envoyer { border:none; border-radius:24px; background:#2563eb; color:#fff; padding:0 22px; font-weight:600; cursor:pointer; }
+    #barre { display:flex; gap:8px; padding:10px 12px; background:#1e293b; }
+    #saisie { flex:1; min-width:0; padding:12px 14px; border:none; border-radius:24px; background:#0f172a; color:#e2e8f0; font-size:16px; outline:none; }
+    #envoyer { border:none; border-radius:24px; background:#2563eb; color:#fff; padding:0 18px; font-weight:600; cursor:pointer; flex:0 0 auto; }
     #envoyer:hover { background:#1d4ed8; }
+    button.vocal { border:none; border-radius:50%; background:#0f172a; color:#38bdf8; font-size:20px; width:46px; height:46px; flex:0 0 auto; cursor:pointer; }
+    button.vocal.actif { background:#dc2626; color:#fff; animation:puls 1s infinite; }
+    button.voix { border:none; border-radius:24px; background:#0f172a; color:#94a3b8; font-size:18px; width:46px; flex:0 0 auto; cursor:pointer; }
+    button.voix.actif { color:#f59e0b; }
+    @keyframes puls { 0%{opacity:1;} 50%{opacity:.4;} 100%{opacity:1;} }
+    #statut { font-size:12px; color:#34d399; padding:0 18px; display:none; text-align:center; }
     .reload { font-size:12px; color:#94a3b8; text-align:center; padding:6px; background:#0f172a; }
   </style>
 </head>
 <body>
   <header>
     <div class="avatar">AI</div>
-    <div>
+    <div class="titre">
       <h1>{{ nom_assistant }}</h1>
       <span>AssistantAI • mode : {{ mode }}</span>
+    </div>
+    <div class="droite">
+      <button id="voix" class="hb" title="Lire les réponses à voix haute">🔈</button>
+      <button id="voixchoix" class="hb" title="Choisir la voix de Hmied">🎛️</button>
+      <div class="ver">v2.0</div>
     </div>
   </header>
 
@@ -44,9 +60,11 @@
   </div>
 
   <div id="barre">
-    <input id="saisie" type="text" placeholder="Ex : prends rendez-vous avec mon frère Mohamed demain à 10h" autocomplete="off">
+    <input id="saisie" type="text" placeholder="Ex : prends rendez-vous demain à 10h" autocomplete="off">
+    <button id="micro" class="vocal" title="Parler en tunisien (APK)">🎤</button>
     <button id="envoyer">Envoyer</button>
   </div>
+  <div id="statut">🎤 Écoute… parle, puis appuie 🎤 pour arrêter</div>
   <div class="reload">💾 Les conversations sont sauvegardées automatiquement dans la base locale.</div>
 
   <script>
@@ -84,6 +102,9 @@
         const dernier = messages.lastElementChild;
         if (dernier && dernier.textContent.includes('réfléchit')) dernier.remove();
         ajouter('assistant', data.reponse || 'Erreur de réponse.', data.intention);
+        if (lirre && window.AndroidIOS && typeof AndroidIOS.parler === 'function') {
+          AndroidIOS.parler(data.reponse || '');
+        }
       } catch (e) {
         const dernier = messages.lastElementChild;
         if (dernier) dernier.remove();
@@ -94,6 +115,69 @@
     envoyer.addEventListener('click', envoi);
     saisie.addEventListener('keydown', e => { if (e.key === 'Enter') envoi(); });
     messages.scrollTop = messages.scrollHeight;
+
+    const micro = document.getElementById('micro');
+    const voixBtn = document.getElementById('voix');
+    const voixChoixBtn = document.getElementById('voixchoix');
+    const statut = document.getElementById('statut');
+    let lirre = false;
+    let rec = null;
+
+    voixBtn.addEventListener('click', () => {
+      lirre = !lirre;
+      voixBtn.classList.toggle('actif', lirre);
+      voixBtn.textContent = lirre ? '🔊' : '🔈';
+    });
+
+    voixChoixBtn.addEventListener('click', () => {
+      if (window.AndroidIOS && typeof AndroidIOS.choisirVoix === 'function') {
+        AndroidIOS.choisirVoix();
+      } else {
+        ajouter('assistant', '🎛️ Le choix de voix est disponible dans l\'APK.');
+      }
+    });
+
+    function arreterEcoutE() {
+      micro.classList.remove('actif');
+      statut.style.display = 'none';
+      if (rec) { try { rec.stop(); } catch (e) {} rec = null; }
+    }
+
+    micro.addEventListener('click', () => {
+      if (micro.classList.contains('actif')) {
+        if (window.AndroidIOS && typeof AndroidIOS.arreter === 'function') AndroidIOS.arreter();
+        arreterEcoutE();
+        return;
+      }
+      if (window.AndroidIOS && typeof AndroidIOS.ecouter === 'function') {
+        AndroidIOS.ecouter();
+        micro.classList.add('actif');
+        statut.style.display = 'block';
+      } else if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        rec = new SR();
+        rec.lang = 'ar-TN';
+        rec.onresult = e => { saisie.value = e.results[0][0].transcript; arreterEcoutE(); envoi(); };
+        rec.onend = arreterEcoutE;
+        rec.onerror = arreterEcoutE;
+        try { rec.start(); micro.classList.add('actif'); statut.style.display = 'block'; } catch (e) { arreterEcoutE(); }
+      } else {
+        ajouter('assistant', '🎤 Reconnaissance vocale non disponible sur cet appareil (utilise l\'APK).');
+      }
+    });
+
+    window.__asrResult = (t) => {
+      arreterEcoutE();
+      saisie.value = t || '';
+      if (t) envoi();
+    };
+    window.__asrInterim = (t) => {
+      if (t) saisie.value = t;
+    };
+    window.__asrErreur = (m) => {
+      arreterEcoutE();
+      ajouter('assistant', '🎤 ' + (m || 'Erreur de reconnaissance vocale.'));
+    };
   </script>
 </body>
 </html>

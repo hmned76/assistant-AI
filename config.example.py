@@ -1,4 +1,4 @@
-"""
+﻿"""
 Configuration d'AssistantAI.
 
 Remplis tes cles API pour passer du mode simu au mode reel.
@@ -16,6 +16,15 @@ HOST = "0.0.0.0"          # accessible depuis l'exterieur (5G) via le tunnel
 PORT = 5000
 NOM_ASSISTANT = "Hmied حميد"
 PREFIXE_UTILISATEUR = "Toi"
+
+# --- Cerveau IA (OpenRouter / Ollama) ---
+# OpenRouter : UNE seule cle API pour tous les modeles (Claude, GPT, Gemini, Llama,
+# DeepSeek...). Modeles GRATUITS disponibles (suffixe ":free", ex ci-dessous).
+# Inscription : https://openrouter.ai  ->  cle "sk-or-..."
+# Colle ta cle ici ; laisse vide pour utiliser Ollama local.
+OPENROUTER_API_KEY = ""
+OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct:free"
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # --- WhatsApp (Twilio) ---
 # Pour tester l'envoi reel, colle ici tes cles de la console Twilio.
