@@ -26,22 +26,42 @@ OPENROUTER_API_KEY = ""
 OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct:free"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# --- WhatsApp (Twilio) ---
-# Pour tester l'envoi reel, colle ici tes cles de la console Twilio.
+# --- WhatsApp (choisis UN fournisseur cloud, Twilio est bloque en Tunisie) ---
+# Alternatives a Twilio (tous fonctionnent depuis la Tunisie) :
+#   1. Maytapi     : https://maytapi.com      - gratuit 1000 msg/jour, simple
+#   2. 360dialog   : https://www.360dialog.io  - gratuit 1000 msg/mois, pro
+#   3. Green-api   : https://green-api.com     - gratuit 5000 msg/jour
+#   4. Chat-API    : https://chat-api.com      - payant mais fiable
+#   5. Twilio      : bloque "Trials unavailable in Tunisia"
+#
+# Inscris-toi sur un de ces services, cree un compte WhatsApp Business,
+# et colle les cles ici. Change WA_API_PROVIDER en "maytapi" ou "360dialog".
+# Ton numero WhatsApp personnel fonctionne (pas besoin de numero pro).
+
+WA_API_PROVIDER = "simu"       # "twilio" | "maytapi" | "360dialog" | "simu"
+WA_WEBHOOK_SECRET = "whsec_TonSecretIci"    # secret HMAC pour verifier les webhooks
+WA_RECEIVE_PHONE = ""            # ton numero WhatsApp (ex: "+216XXXXXXXX")
+WA_SEND_PHONE = ""               # idem (le meme numero envoie)
+
+# --- Maytapi (recommande pour la Tunisie - gratuit 1000 msg/jour) ---
+# Inscription : https://maytapi.com
+# Apres inscription, cree une instance et recupere :
+#   - API Key (dans le dashboard Maytapi)
+#   - Instance ID (dans l'URL de ton instance)
+WA_MAYTAPI_API_KEY = ""
+WA_MAYTAPI_INSTANCE_ID = ""
+
+# --- 360dialog (alternative pro - gratuit 1000 msg/mois) ---
+# Inscription : https://www.360dialog.io
+WA_360DIALOG_API_KEY = ""
+WA_360DIALOG_INSTANCE_ID = ""
+
+# --- Twilio (NE FONCTIONNE PAS en Tunisie - trials bloques) ---
+# Si tu as un compte Twilio hors Tunisie, remplit ici :
 TWILIO_ACCOUNT_SID = ""
 TWILIO_AUTH_TOKEN = ""
 TWILIO_FROM_WHATSAPP = ""        # ex: "whatsapp:+1415523886" (numero sandbox Twilio)
 TWILIO_TO_WHATSAPP = ""          # ex: "whatsapp:+216XXXXXXXX" (ton numero)
-
-# --- WhatsApp webhook / monitoring ---
-WA_API_PROVIDER = "twilio"       # "twilio" | "maytapi" | "360dialog" | "simu"
-WA_WEBHOOK_SECRET = ""           # secret HMAC pour verifier les webhooks entrants
-WA_RECEIVE_PHONE = ""            # numero WhatsApp qui recoit les messages
-WA_SEND_PHONE = ""               # numero WhatsApp qui envoie les messages
-WA_MAYTAPI_API_KEY = ""          # cle API Maytapi si utilise
-WA_MAYTAPI_INSTANCE_ID = ""      # ID d'instance Maytapi
-WA_360DIALOG_API_KEY = ""        # cle API 360dialog si utilise
-WA_360DIALOG_INSTANCE_ID = ""    # ID d'instance 360dialog
 
 # --- Email (SMTP / SendGrid) ---
 EMAIL_ACTIF = False              # passe a True quand tu as rempli le serveur SMTP

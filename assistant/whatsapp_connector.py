@@ -8,13 +8,14 @@ Gere :
 - Integration avec le moteur IA pour repondre automatiquement
 
 Config requis dans config.py pour le mode reel :
-- WA_API_PROVIDER : "twilio" | "maytapi" | "360dialog" | "simu"
+- WA_API_PROVIDER : "twilio" | "maytapi" | "360dialog" | "green-api" | "simu"
 - WA_WEBHOOK_SECRET : secret pour verifier les webhooks entrants
 - WA_RECEIVE_PHONE : numero WhatsApp qui recoit les messages (ex: "+216XXXXXXXX")
 - WA_SEND_PHONE : numero WhatsApp qui envoie les messages
 - Pour Twilio : TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_WHATSAPP
 - Pour Maytapi : WA_MAYTAPI_API_KEY, WA_MAYTAPI_INSTANCE_ID
 - Pour 360dialog : WA_360DIALOG_API_KEY, WA_360DIALOG_INSTANCE_ID
+- Pour Green-api : GREEN_API_INSTANCE_ID, GREEN_API_API_KEY (https://green-api.com)
 """
 
 import requests
@@ -58,6 +59,8 @@ def envoyer_whatsapp(destinataire: str, message: str) -> dict:
         return _envoyer_maytapi(destinataire, message)
     if provider == "360dialog":
         return _envoyer_360dialog(destinataire, message)
+    if provider == "green-api":
+        return _envoyer_greenapi(destinataire, message)
     return {"statut": "erreur", "details": f"Fournisseur WhatsApp inconnu: {provider}"}
 
 
@@ -119,6 +122,27 @@ def _envoyer_360dialog(destinataire: str, message: str) -> dict:
     )
     if resp.status_code == 200:
         return {"statut": "envoye", "a": destinataire}
+    return {"statut": "erreur", "details": resp.text}
+
+
+def _envoyer_greenapi(destinataire: str, message: str) -> dict:
+    """Envoie via Green-api WhatsApp API."""
+    instance_id = getattr(config, "GREEN_API_INSTANCE_ID", "")
+    api_key = getattr(config, "GREEN_API_API_KEY", "")
+    if not instance_id or not api_key:
+        return {"statut": "simu", "a": destinataire, "contenu": message}
+    url = f"https://api.green-api.com/waSender/{instance_id}/sendMessage"
+    resp = requests.post(
+        url,
+        json={
+            "chatId": f"{destinataire}@c.us",
+            "message": message,
+        },
+        headers={"Content-Type": "application/json", "Authorization": api_key},
+        timeout=15,
+    )
+    if resp.status_code == 200:
+        return {"statut": "envoye", "a": destinataire, "id": resp.json().get("idMessage")}
     return {"statut": "erreur", "details": resp.text}
 
 
@@ -328,6 +352,33 @@ class WhatsAppMonitor:
                         })
         except Exception as e:
             print("WA 360dialog polling erreur:", e)
+        return messages
+
+    def _poller_greenapi(self, since_timestamp: int) -> list:
+        messages = []
+        instance_id = getattr(config, "GREEN_API_INSTANCE_ID", "")
+        api_key = getattr(config, "GREEN_API_API_KEY", "")
+        if not instance_id or not api_key:
+            return messages
+        try:
+            url = f"https://api.green-api.com/waqs/{instance_id}/lastMessages"
+            resp = requests.get(
+                url, headers={"Content-Type": "application/json"},
+                params={"limit": 50}, timeout=10,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                for msg in data.get("messages", []):
+                    ts = int(msg.get("timestamp", 0))
+                    if ts > since_timestamp:
+                        messages.append({
+                            "from": msg.get("senderId", ""),
+                            "body": msg.get("messageData", {}).get("textMessageData", {}).get("textMessage", ""),
+                            "timestamp": ts,
+                            "message_id": msg.get("idMessage", ""),
+                        })
+        except Exception as e:
+            print("WA Green-api polling erreur:", e)
         return messages
 
 
